@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>WebSocket Client - Combined Servers</title>
+</head>
+<body>
+  <h1>WebSocket Client - Combined Servers</h1>
+  <div id="usernameSection">
+    <input type="text" id="usernameInput" placeholder="Enter username" onkeydown="handleUsernameKeyPress(event)">
+    <button onclick="joinServer()">Join Server</button>
+  </div>
+  <div id="serverSelection" style="display: none;">
+    <button onclick="showServer('forest')">Join Forest Server</button>
+    <button onclick="showServer('safe-place')">Join Safe Place Server</button>
+  </div>
+  <div id="forestServer" style="display: none;">
+    <h2>Forest Server</h2>
+    <div id="messageSection">
+      <input type="text" id="messageInput" placeholder="Enter message" onkeydown="handleKeyPress(event)">
+      <button onclick="sendMessage('forest')">Send</button>
+    </div>
+    <ul id="forestMessages"></ul>
+  </div>
+  <div id="safePlaceServer" style="display: none;">
+    <h2>Safe Place Server - Diary</h2>
+    <div>
+      <textarea id="diaryEntry" placeholder="Write your diary entry here..." style="width: 100%; height: 200px;"></textarea>
+    </div>
+    <button onclick="saveEntry()">Save Entry</button>
+    <div id="archiveSection">
+      <h3>Archived Entries</h3>
+      <ul id="archiveList"></ul>
+    </div>
+  </div>
+
+  <script>
+    const forestSocket = new WebSocket('ws://localhost:3000/forest');
+    const safePlaceSocket = new WebSocket('ws://localhost:3001/safe-place');
+    let userId = null;
+    let joinedServer = false;
+    let activeServer = null;
+
+    forestSocket.onmessage = function(event) {
+      const blob = event.data;
+      const reader = new FileReader();
+      reader.onload = function() {
+        const message = reader.result;
+        if (joinedServer && activeServer === 'forest') {
+          const li = document.createElement('li');
+          li.innerText = message;
+          document.getElementById('forestMessages').appendChild(li);
+        }
+      };
+      reader.readAsText(blob);
+    };
+
+    safePlaceSocket.onmessage = function(event) {
+      // Safe Place Server doesn't display messages
+    };
+
+    function joinServer() {
+      const usernameInput = document.getElementById('usernameInput');
+      const username = usernameInput.value.trim();
+      if (username === '') {
+        alert('Please enter a valid username');
+        return;
+      }
+      userId = username;
+      document.getElementById('usernameSection').style.display = 'none';
+      document.getElementById('serverSelection').style.display = 'block';
+    }
+
+    function showServer(server) {
+      if (server === 'forest') {
+        document.getElementById('serverSelection').style.display = 'none';
+        document.getElementById('forestServer').style.display = 'block';
+        joinedServer = true;
+        activeServer = 'forest';
+        forestSocket.send(`${userId} joined the Forest server`);
+      } else if (server === 'safe-place') {
+        document.getElementById('serverSelection').style.display = 'none';
+        document.getElementById('safePlaceServer').style.display = 'block';
+        joinedServer = true;
+        activeServer = 'safe-place';
+      }
+    }
+
+    function sendMessage(server) {
+      if (server === 'forest') {
+        const input = document.getElementById('messageInput');
+        const message = input.value;
+        forestSocket.send(`${userId}: ${message}`);
+        input.value = '';
+      }
+    }
+
+    function saveEntry() {
+      const diaryEntry = document.getElementById('diaryEntry');
+      const entry = {
+        date: new Date().toLocaleString(),
+        content: diaryEntry.value
+      };
+
+      const archiveList = document.getElementById('archiveList');
+      const li = document.createElement('li');
+      li.innerText = `${entry.date}: ${entry.content}`;
+      archiveList.appendChild(li);
+
+      diaryEntry.value = '';
+    }
+
+    function handleUsernameKeyPress(event) {
+      if (event.keyCode === 13) {
+        event.preventDefault();
+        joinServer();
+      }
+    }
+
+    function handleKeyPress(event) {
+      if (event.keyCode === 13) {
+        event.preventDefault();
+        if (activeServer === 'forest') {
+          sendMessage('forest');
+        }
+      }
+    }
+  </script>
+</body>
+</html>
