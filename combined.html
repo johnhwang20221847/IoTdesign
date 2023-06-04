@@ -34,8 +34,8 @@
   </div>
 
   <script>
-    const forestSocket = new WebSocket('ws://localhost:3000/forest');
-    const safePlaceSocket = new WebSocket('ws://localhost:3001/safe-place');
+    const forestSocket = new WebSocket(`wss://${window.location.host}/forest`);
+    const safePlaceSocket = new WebSocket(`wss://${window.location.host}/safe-place`);
     let userId = null;
     let joinedServer = false;
     let activeServer = null;
